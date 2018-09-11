@@ -1,0 +1,132 @@
+#1 准备工作
+[root@localhost ~]# date
+2018年 08月 30日 星期四 19:21:24 CST
+#自动分配ip
+[root@localhost ~]# cd /etc/sysconfig/network-scripts/
+[root@localhost network-scripts]# ls
+ifcfg-ens33  ifdown-bnep  ifdown-ipv6  ifdown-ppp     ifdown-Team      ifup          ifup-eth   ifup-isdn   ifup-post    ifup-sit       ifup-tunnel       network-functions
+ifcfg-lo     ifdown-eth   ifdown-isdn  ifdown-routes  ifdown-TeamPort  ifup-aliases  ifup-ippp  ifup-plip   ifup-ppp     ifup-Team      ifup-wireless     network-functions-ipv6
+ifdown       ifdown-ippp  ifdown-post  ifdown-sit     ifdown-tunnel    ifup-bnep     ifup-ipv6  ifup-plusb  ifup-routes  ifup-TeamPort  init.ipv6-global
+[root@localhost network-scripts]# vi ifcfg-ens33 
+#修改ONBOOT为yes，重启服务
+[root@localhost network-scripts]# service network restart
+Restarting network (via systemctl):                        [  确定  ]
+#查看ip地址
+[root@localhost network-scripts]# ip addr
+1: lo: <LOOPBACK,UP,LOWER_UP> mtu 65536 qdisc noqueue state UNKNOWN qlen 1
+    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
+    inet 127.0.0.1/8 scope host lo
+       valid_lft forever preferred_lft forever
+    inet6 ::1/128 scope host 
+       valid_lft forever preferred_lft forever
+2: ens33: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc pfifo_fast state UP qlen 1000
+    link/ether 00:0c:29:03:3f:1c brd ff:ff:ff:ff:ff:ff
+    inet 192.168.129.128/24 brd 192.168.129.255 scope global dynamic ens33
+       valid_lft 1777sec preferred_lft 1777sec
+    inet6 fe80::da5:c367:cbe4:cd4/64 scope link 
+       valid_lft forever preferred_lft forever
+[root@localhost network-scripts]#
+
+#2 安装jdk
+#创建文件夹，将jdk安装包通过xftp工具放到目录下
+[root@localhost network-scripts]# cd /
+[root@localhost /]# ls
+bin  boot  dev  etc  home  lib  lib64  media  mnt  opt  proc  root  run  sbin  srv  sys  tmp  usr  var
+[root@localhost /]# cd home
+[root@localhost home]# ls
+[root@localhost home]# mkdir jdk
+[root@localhost home]# ls
+jdk
+[root@localhost home]# cd jdk
+[root@localhost jdk]# ls
+jdk-8u161-linux-x64.tar.gz
+#解压文件
+[root@localhost jdk]# tar -zxvf jdk-8u161-linux-x64.tar.gz
+[root@localhost jdk]# ls
+jdk1.8.0_161  jdk-8u161-linux-x64.tar.gz
+#配置环境变量
+[root@localhost ~]# vi /etc/profile
+#文本末尾加入以下内容
+export JAVA_HOME=/home/jdk/jdk1.8.0_161
+export CLASSPATH=.
+export PATH=$PATH:${JAVA_HOME}/bin
+#配置生效
+[root@localhost ~]# source /etc/profile
+[root@localhost ~]# java -version
+java version "1.8.0_161"
+Java(TM) SE Runtime Environment (build 1.8.0_161-b12)
+Java HotSpot(TM) 64-Bit Server VM (build 25.161-b12, mixed mode)
+
+#3 修改主机名称
+[root@localhost ~]# hostnamectl
+   Static hostname: localhost.localdomain
+         Icon name: computer-vm
+           Chassis: vm
+        Machine ID: b3fad45bd73547409848b21453e92fb1
+           Boot ID: fee17e206c4747e3943195a320b27b99
+    Virtualization: vmware
+  Operating System: CentOS Linux 7 (Core)
+       CPE OS Name: cpe:/o:centos:centos:7
+            Kernel: Linux 3.10.0-693.el7.x86_64
+      Architecture: x86-64
+[root@localhost ~]# hostnamectl set-hostname GXL
+#修改内容127.0.0.1 gxl
+[root@localhost ~]# vi /etc/hosts
+[root@localhost ~]# reboot -f
+
+
+#4 zookeeper
+[root@gxl kafka]# ll
+总用量 40444
+drwxr-xr-x. 6 root root       89 6月  23 2017 kafka_2.11-0.11.0.0
+-rw-r--r--. 1 root root 41414555 8月  30 23:10 kafka_2.11-0.11.0.0.tgz
+[root@gxl kafka]# ls
+kafka_2.11-0.11.0.0  kafka_2.11-0.11.0.0.tgz
+[root@gxl kafka]# mkdir zklogs
+[root@gxl kafka]# ls
+kafka_2.11-0.11.0.0  kafka_2.11-0.11.0.0.tgz  zklogs
+[root@gxl kafka]# cd kafka_2.11-0.11.0.0
+[root@gxl kafka_2.11-0.11.0.0]# vi config/zookeeper.properties 
+[root@gxl kafka_2.11-0.11.0.0]# cp config/zookeeper.properties config/zookeeper-gxl.properties
+[root@gxl kafka_2.11-0.11.0.0]# vi config/zookeeper-gxl.properties 
+[root@gxl kafka_2.11-0.11.0.0]# nohup ./bin/zookeeper-server-start.sh config/zookeeper-gxl.properties &
+[1] 1155
+[root@gxl kafka_2.11-0.11.0.0]# nohup: 忽略输入并把输出追加到"nohup.out"
+[root@gxl kafka_2.11-0.11.0.0]# ps -ef | grep zookeeper
+root      1155  1099  2 17:27 pts/0    00:00:01 /home/jdk/jdk1.8.0_161/bin/java -Xmx512M -Xms512M -server 。。。省略。。。 config/zookeeper-gxl.properties
+root      1404  1099  0 17:29 pts/0    00:00:00 grep --color=auto zookeeper
+
+
+
+
+#5 kafka安装
+[root@gxl kafka_2.11-0.11.0.0]# cp config/server.properties config/server-gxl.properties 
+[root@gxl kafka_2.11-0.11.0.0]# vi config/server-gxl.properties 
+[root@gxl kafka_2.11-0.11.0.0]# nohup ./bin/kafka-server-start.sh ./config/server-gxl.properties &
+[2] 1438
+[root@gxl kafka_2.11-0.11.0.0]# nohup: 忽略输入并把输出追加到"nohup.out"
+^C
+[root@gxl kafka_2.11-0.11.0.0]# ps -ef | grep kafka
+root      1155  1099  0 17:27 pts/0    00:00:03 /home/jdk/jdk1.8.0_161/bin/java -Xmx512M -Xms512M -server -XX:+UseG1GC -XX:MaxGCPauseMillis=20 -XX:InitiatingHeapOccupancyPercent=35 -XX:+DisableExplicitGC -Djava.awt.headless=true -Xloggc:/home/kafka/kafka_2.11-0.11.0.0/bin/../logs/zookeeper-gc.log -verbose:gc -XX:+PrintGCDetails -XX:+PrintGCDateStamps -XX:+PrintGCTimeStamps -XX:+UseGCLogFileRotation -XX:NumberOfGCLogFiles=10 -XX:GCLogFileSize=100M -Dcom.sun.management.jmxremote -Dcom.sun.management.jmxremote.authenticate=false -Dcom.sun.management.jmxremote.ssl=false -Dkafka.logs.dir=/home/kafka/kafka_2.11-0.11.0.0/bin/../logs -Dlog4j.configuration=file:./bin/../config/log4j.properties -cp .:/home/kafka/kafka_2.11-0.11.0.0/bin/../libs/aopalliance-repackaged-2.5.0-b05.jar:/home/kafka/kafka_2.11-0.11.0.0/bin/../libs/argparse4j-0.7.0.jar:/home/kafka/kafka_2.11-0.11.0.0/bin/../libs/commons-lang3-3.5.jar:/home/kafka/kafka_2.11-0.11.0.0/bin/../libs/connect-api-0.11.0.0.jar:/home/kafka/kafka_2.11-0.11.0.0/bin/../libs/connect-file-0.11.0.0.jar:/home/kafka/kafka_2.11-0.11.0.0/bin/../libs/connect-json-0.11.0.0.jar:/home/kafka/kafka_2.11-0.11.0.0/bin/../libs/connect-runtime-0.11.0.0.jar:/home/kafka/kafka_2.11-0.11.0.0/bin/../libs/connect-transforms-0.11.0.0.jar:/home/kafka/kafka_2.11-0.11.0.0/bin/../libs/guava-20.0.jar:/home/kafka/kafka_2.11-0.11.0.0/bin/../libs/hk2-api-2.5.0-b05.jar:/home/kafka/kafka_2.11-0.11.0.0/bin/../libs/hk2-locator-2.5.0-b05.jar:/home/kafka/kafka_2.11-0.11.0.0/bin/../libs/hk2-utils-2.5.0-b05.jar:/home/kafka/kafka_2.11-0.11.0.0/bin/../libs/jackson-annotations-2.8.5.jar:/home/kafka/kafka_2.11-0.11.0.0/bin/../libs/jackson-core-2.8.5.jar:/home/kafka/kafka_2.11-0.11.0.0/bin/../libs/jackson-databind-2.8.5.jar:/home/kafka/kafka_2.11-0.11.0.0/bin/../libs/jackson-jaxrs-base-2.8.5.jar:/home/kafka/kafka_2.11-0.11.0.0/bin/../libs/jackson-jaxrs-json-provider-2.8.5.jar:/home/kafka/kafka_2.11-0.11.0.0/bin/../libs/jackson-module-jaxb-annotations-2.8.5.jar:/home/kafka/kafka_2.11-0.11.0.0/bin/../libs/javassist-3.21.0-GA.jar:/home/kafka/kafka_2.11-0.11.0.0/bin/../libs/javax.annotation-api-1.2.jar:/home/kafka/kafka_2.11-0.11.0.0/bin/../libs/javax.inject-1.jar:/home/kafka/kafka_2.11-0.11.0.0/bin/../libs/javax.inject-2.5.0-b05.jar:/home/kafka/kafka_2.11-0.11.0.0/bin/../libs/javax.servlet-api-3.1.0.jar:/home/kafka/kafka_2.11-0.11.0.0/bin/../libs/javax.ws.rs-api-2.0.1.jar:/home/kafka/kafka_2.11-0.11.0.0/bin/../libs/jersey-client-2.24.jar:/home/kafka/kafka_2.11-0.11.0.0/bin/../libs/jersey-common-2.24.jar:/home/kafka/kafka_2.11-0.11.0.0/bin/../libs/jersey-container-servlet-2.24.jar:/home/kafka/kafka_2.11-0.11.0.0/bin/../libs/jersey-container-servlet-core-2.24.jar:/home/kafka/kafka_2.11-0.11.0.0/bin/../libs/jersey-guava-2.24.jar:/home/kafka/kafka_2.11-0.11.0.0/bin/../libs/jersey-media-jaxb-2.24.jar:/home/kafka/kafka_2.11-0.11.0.0/bin/../libs/jersey-server-2.24.jar:/home/kafka/kafka_2.11-0.11.0.0/bin/../libs/jetty-continuation-9.2.15.v20160210.jar:/home/kafka/kafka_2.11-0.11.0.0/bin/../libs/jetty-http-9.2.15.v20160210.jar:/home/kafka/kafka_2.11-0.11.0.0/bin/../libs/jetty-io-9.2.15.v20160210.jar:/home/kafka/kafka_2.11-0.11.0.0/bin/../libs/jetty-security-9.2.15.v20160210.jar:/home/kafka/kafka_2.11-0.11.0.0/bin/../libs/jetty-server-9.2.15.v20160210.jar:/home/kafka/kafka_2.11-0.11.0.0/bin/../libs/jetty-servlet-9.2.15.v20160210.jar:/home/kafka/kafka_2.11-0.11.0.0/bin/../libs/jetty-servlets-9.2.15.v20160210.jar:/home/kafka/kafka_2.11-0.11.0.0/bin/../libs/jetty-util-9.2.15.v20160210.jar:/home/kafka/kafka_2.11-0.11.0.0/bin/../libs/jopt-simple-5.0.3.jar:/home/kafka/kafka_2.11-0.11.0.0/bin/../libs/kafka_2.11-0.11.0.0.jar:/home/kafka/kafka_2.11-0.11.0.0/bin/../libs/kafka_2.11-0.11.0.0-sources.jar:/home/kafka/kafka_2.11-0.11.0.0/bin/../libs/kafka_2.11-0.11.0.0-test-sources.jar:/home/kafka/kafka_2.11-0.11.0.0/bin/../libs/kafka-clients-0.11.0.0.jar:/home/kafka/kafka_2.11-0.11.0.0/bin/../libs/kafka-log4j-appender-0.11.0.0.jar:/home/kafka/kafka_2.11-0.11.0.0/bin/../libs/kafka-streams-0.11.0.0.jar:/home/kafka/kafka_2.11-0.11.0.0/bin/../libs/kafka-streams-examples-0.11.0.0.jar:/home/kafka/kafka_2.11-0.11.0.0/bin/../libs/kafka-tools-0.11.0.0.jar:/home/kafka/kafka_2.11-0.11.0.0/bin/../libs/log4j-1.2.17.jar:/home/kafka/kafka_2.11-0.11.0.0/bin/../libs/lz4-1.3.0.jar:/home/kafka/kafka_2.11-0.11.0.0/bin/../libs/maven-artifact-3.5.0.jar:/home/kafkakafka_2.11-0.11.0.0/bin/../libs/metrics-core-2.2.0.jar:/home/kafka/kafka_2.11-0.11.0.0/bin/../libs/osgi-resource-locator-1.0.1.jar:/home/kafka/kafka_2.11-0.11.0.0/bin/../libs/plexus-utils-3.0.24.jar:/home/kafka/kafka_2.11-0.11.0.0/bin/../libs/reflections-0.9.11.jar:/home/kafka/kafka_2.11-0.11.0.0/bin/../libs/rocksdbjni-5.0.1.jar:/home/kafka/kafka_2.11-0.11.0.0/bin/../libs/scala-library-2.11.11.jar:/home/kafka/kafk_2.11-0.11.0.0/bin/../libs/scala-parser-combinators_2.11-1.0.4.jar:/home/kafka/kafka_2.11-0.11.0.0/bin/../libs/slf4j-api-1.7.25.jar:/home/kafka/kafka_2.11-0.11.0.0/bin/../libs/slf4j-log4j12-1.7.25.jar:/home/kafka/kafka_2.11-0.11.0.0/bin/../libs/snappy-java-1.1.2.6.jar:/home/kafka/kafka_2.11-0.11.0.0/bin/../libs/validation-api-1.1.0.Final.jar:/home/kafka/kafka_2.11-0.11.0.0/bin/../libs/zkclient-0.10.jar:/home/kafkakafka_2.11-0.11.0.0/bin/../libs/zookeeper-3.4.10.jar org.apache.zookeeper.server.quorum.QuorumPeerMain config/zookeeper-gxl.properties
+root      1438  1099 22 17:37 pts/0    00:00:03 /home/jdk/jdk1.8.0_161/bin/java -Xmx1G -Xms1G -server -XX:+UseG1GC -XX:MaxGCPauseMillis=20 -XX:InitiatingHeapOccupancyPercent=35 -XX:+DisableExplicitGC -Djava.awt.headless=true -Xloggc:/home/kafka/kafka_2.11-0.11.0.0/bin/../logs/kafkaServer-gc.log -verbose:gc -XX:+PrintGCDetails -XX:+PrintGCDateStamps -XX:+PrintGCTimeStamps -XX:+UseGCLogFileRotation -XX:NumberOfGCLogFiles=10 -XX:GCLogFileSize=100M -Dcom.sun.management.jmxremote -Dcom.sun.management.jmxremote.authenticate=false -Dcom.sun.management.jmxremote.ssl=false -Dkafka.logs.dir=/home/kafka/kafka_2.11-0.11.0.0/bin/../logs -Dlog4j.configuration=file:./bin/../config/log4j.properties -cp .:/home/kafka/kafka_2.11-0.11.0.0/bin/../libs/aopalliance-repackaged-2.5.0-b05.jar:/home/kafka/kafka_2.11-0.11.0.0/bin/../libs/argparse4j-0.7.0.jar:/home/kafka/kafka_2.11-0.11.0.0/bin/../libs/commons-lang3-3.5.jar:/home/kafka/kafka_2.11-0.11.0.0/bin/../libs/connect-api-0.11.0.0.jar:/home/kafka/kafka_2.11-0.11.0.0/bin/../libs/connect-file-0.11.0.0.jar:/home/kafka/kafka_2.11-0.11.0.0/bin/../libs/connect-json-0.11.0.0.jar:/home/kafka/kafka_2.11-0.11.0.0/bin/../libs/connect-runtime-0.11.0.0.jar:/home/kafka/kafka_2.11-0.11.0.0/bin/../libs/connect-transforms-0.11.0.0.jar:/home/kafka/kafka_2.11-0.11.0.0/bin/../libs/guava-20.0.jar:/home/kafka/kafka_2.11-0.11.0.0/bin/../libs/hk2-api-2.5.0-b05.jar:/home/kafka/kafka_2.11-0.11.0.0/bin/../libs/hk2-locator-2.5.0-b05.jar:/home/kafka/kafka_2.11-0.11.0.0/bin/../libs/hk2-utils-2.5.0-b05.jar:/home/kafka/kafka_2.11-0.11.0.0/bin/../libs/jackson-annotations-2.8.5.jar:/home/kafka/kafka_2.11-0.11.0.0/bin/../libs/jackson-core-2.8.5.jar:/home/kafka/kafka_2.11-0.11.0.0/bin/../libs/jackson-databind-2.8.5.jar:/home/kafka/kafka_2.11-0.11.0.0/bin/../libs/jackson-jaxrs-base-2.8.5.jar:/home/kafka/kafka_2.11-0.11.0.0/bin/../libs/jackson-jaxrs-json-provider-2.8.5.jar:/home/kafka/kafka_2.11-0.11.0.0/bin/../libs/jackson-module-jaxb-annotations-2.8.5.jar:/home/kafka/kafka_2.11-0.11.0.0/bin/../libs/javassist-3.21.0-GA.jar:/home/kafka/kafka_2.11-0.11.0.0/bin/../libs/javax.annotation-api-1.2.jar:/home/kafka/kafka_2.11-0.11.0.0/bin/../libs/javax.inject-1.jar:/home/kafka/kafka_2.11-0.11.0.0/bin/../libs/javax.inject-2.5.0-b05.jar:/home/kafka/kafka_2.11-0.11.0.0/bin/../libs/javax.servlet-api-3.1.0.jar:/home/kafka/kafka_2.11-0.11.0.0/bin/../libs/javax.ws.rs-api-2.0.1.jar:/home/kafka/kafka_2.11-0.11.0.0/bin/../libs/jersey-client-2.24.jar:/home/kafka/kafka_2.11-0.11.0.0/bin/../libs/jersey-common-2.24.jar:/home/kafka/kafka_2.11-0.11.0.0/bin/../libs/jersey-container-servlet-2.24.jar:/home/kafka/kafka_2.11-0.11.0.0/bin/../libs/jersey-container-servlet-core-2.24.jar:/home/kafka/kafka_2.11-0.11.0.0/bin/../libs/jersey-guava-2.24.jar:/home/kafka/kafka_2.11-0.11.0.0/bin/../libs/jersey-media-jaxb-2.24.jar:/home/kafka/kafka_2.11-0.11.0.0/bin/../libs/jersey-server-2.24.jar:/home/kafka/kafka_2.11-0.11.0.0/bin/../libs/jetty-continuation-9.2.15.v20160210.jar:/home/kafka/kafka_2.11-0.11.0.0/bin/../libs/jetty-http-9.2.15.v20160210.jar:/home/kafka/kafka_2.11-0.11.0.0/bin/../libs/jetty-io-9.2.15.v20160210.jar:/home/kafka/kafka_2.11-0.11.0.0/bin/../libs/jetty-security-9.2.15.v20160210.jar:/home/kafka/kafka_2.11-0.11.0.0/bin/../libs/jetty-server-9.2.15.v20160210.jar:/home/kafka/kafka_2.11-0.11.0.0/bin/../libs/jetty-servlet-9.2.15.v20160210.jar:/home/kafka/kafka_2.11-0.11.0.0/bin/../libs/jetty-servlets-9.2.15.v20160210.jar:/home/kafka/kafka_2.11-0.11.0.0/bin/../libs/jetty-util-9.2.15.v20160210.jar:/home/kafka/kafka_2.11-0.11.0.0/bin/../libs/jopt-simple-5.0.3.jar:/home/kafka/kafka_2.11-0.11.0.0/bin/../libs/kafka_2.11-0.11.0.0.jar:/home/kafka/kafka_2.11-0.11.0.0/bin/../libs/kafka_2.11-0.11.0.0-sources.jar:/home/kafka/kafka_2.11-0.11.0.0/bin/../libs/kafka_2.11-0.11.0.0-test-sources.jar:/home/kafka/kafka_2.11-0.11.0.0/bin/../libs/kafka-clients-0.11.0.0.jar:/home/kafka/kafka_2.11-0.11.0.0/bin/../libs/kafka-log4j-appender-0.11.0.0.jar:/home/kafka/kafka_2.11-0.11.0.0/bin/../libs/kafka-streams-0.11.0.0.jar:/home/kafka/kafka_2.11-0.11.0.0/bin/../libs/kafka-streams-examples-0.11.0.0.jar:/home/kafka/kafka_2.11-0.11.0.0/bin/../libs/kafka-tools-0.11.0.0.jar:/home/kafka/kafka_2.11-0.11.0.0/bin/../libs/log4j-1.2.17.jar:/home/kafka/kafka_2.11-0.11.0.0/bin/../libs/lz4-1.3.0.jar:/home/kafka/kafka_2.11-0.11.0.0/bin/../libs/maven-artifact-3.5.0.jar:/home/kafka/kafka_2.11-0.11.0.0/bin/../libs/metrics-core-2.2.0.jar:/home/kafka/kafka_2.11-0.11.0.0/bin/../libs/osgi-resource-locator-1.0.1.jar:/home/kafka/kafka_2.11-0.11.0.0/bin/../libs/plexus-utils-3.0.24.jar:/home/kafkakafka_2.11-0.11.0.0/bin/../libs/reflections-0.9.11.jar:/home/kafka/kafka_2.11-0.11.0.0/bin/../libs/rocksdbjni-5.0.1.jar:/home/kafka/kafka_2.11-0.11.0.0/bin/../libs/scala-library-2.11.11.jar:/home/kafka/kafka_2.11-0.11.0.0/bin/../libs/scala-parser-combinators_2.11-1.0.4.jar:/home/kafka/kafka_2.11-0.11.0.0/bin/../libs/slf4j-api-1.7.25.jar:/home/kafka/kafka_2.11-0.11.0.0/bin/../libs/slf4j-log4j12-1.7.25.jar:/home/kafka/kafka_2.11-0.11.0.0/bin/../libs/snappy-java-1.1.2.6.jar:/home/kafka/kafka_2.11-0.11.0.0/bin/../libs/validation-api-1.1.0.Final.jar:/home/kafka/kafka_2.11-0.11.0.0/bin/../libs/zkclient-0.10.jar:/home/kafka/kafka_2.11-0.11.0.0/bin/../libs/zookeeper-3.4.10.jar kafka.Kafka ./config/server-gxl.properties
+root      1725  1099  0 17:37 pts/0    00:00:00 grep --color=auto kafka
+[root@gxl kafka_2.11-0.11.0.0]# bin/kafka-topics.sh --create --zookeeper 192.168.129.128:2181 --replication-factor 1 --partitions 1 --topic test
+Created topic "test".
+[root@gxl kafka_2.11-0.11.0.0]# bin/kafka-topics.sh -zookeeper 192.168.129.128:2181 -list
+test
+[root@gxl kafka_2.11-0.11.0.0]# bin/kafka-console-producer.sh --broker-list 192.168.129.128:9092 --topic test
+[root@gxl kafka_2.11-0.11.0.0]# bin/kafka-console-consumer.sh --bootstrap-server 192.168.129.128:9092 --topic test --from-beginning
+
+# 报错：
+[2018-08-31 11:01:10,093] ERROR Error when sending message to topic test with key: null, value: 5 bytes with error: (org.apache.kafka.clients.producer.internals.ErrorLoggingCallback)
+org.apache.kafka.common.errors.TimeoutException: Failed to update metadata after 60000 ms.
+# 原因：
+发布消息和订阅命令中kafka端口号和topic不存在
+
+Kafka概念：
+broker：kafka集群包含一个或者多个服务器，这些服务器称为broker
+topic：主题，与rabbitMQ中队列概念相似，每个发布在kafka集群上的消息都必须有一个topic（物理上不同topic的消息分开存储，逻辑上一个topic消息虽然保存与一个或多个broker上，但是只需要指定消息的topic就可以生产和消费数据）
+partition：物理概念上的分区，为提高系统吞吐量，每个topic会分为一个或多个partition，每个partition对应一个文件夹（存储对应分区的消息和索引文件）
+producer：生产消息并发布到kafka broker上
+consumer：向kafka broker读取消息并处理的客户端
+consumer group：每个consumer属于一个特定的组（可以指定，不指定为默认），组可以实现一条消息被组内多个成员消费
